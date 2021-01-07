@@ -5,47 +5,58 @@ package com.othman.findmynextgame
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.util.Log
-import android.widget.Button
 import android.widget.Toast
-import androidx.core.net.toUri
+import androidx.activity.viewModels
+import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModel
 import coil.api.load
-import com.othman.findmynextgame.data.api.ApiService
+import com.othman.findmynextgame.util.Resource
+import com.othman.findmynextgame.viewmodel.GameViewModel
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.android.synthetic.main.activity_main.*
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.MainScope
-import kotlinx.coroutines.launch
 
+@AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
+
+
+    private val viewModel: GameViewModel by viewModels()
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
 
-        get_game_button.setOnClickListener { executeRequest() }
+        get_game_button.setOnClickListener { display() }
 
     }
 
 
-    fun executeRequest() = CoroutineScope(Dispatchers.Main).launch {
+    fun display() {
 
-        try {
+        viewModel.gameList.observe(this, Observer {
 
-            val response = ApiService.apiClient.getGamesList()
-            if (response.isSuccessful && response.body() != null) {
+            when (it) {
 
-                val data = response.body()
-                game_image.load(data!!.results[0].background_image)
-            } else {
+                is Resource.Success -> {
+                    if (it.data != null) {
+                        val game = it.data[(0..it.data.size).random()]
+                        game_image.load(game.background_image)
+                        result_count.text = game.name
+                    }
+                }
 
-                result_count.text = response.errorBody().toString()
+                is Resource.Loading -> {
+                    Toast.makeText(this, "Loading", Toast.LENGTH_SHORT).show()
+                }
+
+                is Resource.Error -> {
+                    Toast.makeText(this, "Error", Toast.LENGTH_SHORT).show()
+                }
             }
+        })
 
 
-        } catch (e: Exception) {
-
-            Log.d("TAG", e.message.toString())
-        }
     }
+
 }
